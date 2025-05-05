@@ -1,0 +1,71 @@
+Task2: Chat with Website Using RAG Pipeline*** 
+
+--Data Scraping and Embedding--
+
+import requests
+from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer
+import faiss
+
+# Define the model for embeddings
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Function to scrape a website
+def scrape_website(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Extract text (simplified version)
+    paragraphs = soup.find_all('p')
+    text_chunks = [p.get_text() for p in paragraphs]
+    
+    return text_chunks
+
+# Convert text chunks to embeddings
+def get_embeddings(text_chunks):
+    embeddings = embedding_model.encode(text_chunks)
+    return embeddings
+
+# Store embeddings in FAISS
+def store_embeddings(embeddings):
+    dim = embeddings.shape[1]
+    index = faiss.IndexFlatL2(dim)
+    index.add(embeddings)
+    return index
+
+# Example usage
+url = "https://www.stanford.edu/"
+chunks = scrape_website(url)
+embeddings = get_embeddings(chunks)
+index = store_embeddings(embeddings)
+
+--Query Handling and Response Generation--
+
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Function to convert query into embedding
+def query_to_embedding(query):
+    return embedding_model.encode([query])
+
+# Function to perform similarity search
+def search_similar_chunks(query_embedding, index, top_n=5):
+    D, I = index.search(query_embedding, top_n)  # D is distance, I is indices of nearest neighbors
+    return I
+
+# Generate response using LLM (simulated here)
+def generate_response(query, index, chunks):
+    query_embedding = query_to_embedding(query)
+    similar_chunk_indices = search_similar_chunks(query_embedding, index)
+    relevant_chunks = [chunks[i] for i in similar_chunk_indices[0]]
+    
+    # Simulate response generation (using relevant chunks)
+    response = f"Based on the relevant information: {relevant_chunks[:2]}"
+    return response
+
+# Example usage
+query = "What is the history of AI?"
+response = generate_response(query, index, chunks)
+print(response)
+
+OUTPUT:
+Based on the relevant information: ['Driving discoveries vital to our world, our health, and our intellectual life', 'Stanford Arts'].
